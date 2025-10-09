@@ -1,0 +1,94 @@
+import numpy as np
+import pandas as pd
+from sklearn.decomposition import PCA
+from sklearn.decomposition import SparsePCA
+from sklearn import preprocessing
+import matplotlib.pylab as plt
+
+####### PCA on the two variables calories and rating
+cereals_df = pd.read_csv("/content/Cereals.csv")
+#cereals_df.head()
+#cereals_df.dtypes
+#cereals_df.shape
+pcs = PCA(n_components=2)
+pcs.fit(cereals_df[["calories", "rating"]])
+pcsSummary = pd.DataFrame({"Standard deviation": np.sqrt(pcs.explained_variance_),"Proportion of variance": pcs.explained_variance_ratio_,"Cumulative proportion": np.cumsum(pcs.explained_variance_ratio_)})
+pcsSummary = pcsSummary.transpose()
+pcsSummary.columns = ["PC1", "PC2"]
+pcsSummary.round(4)
+# Components
+pcsComponents_df = pd.DataFrame(pcs.components_.transpose(), columns=["PC1", "PC2"],
+index=["calories", "rating"])
+pcsComponents_df
+# Scores
+scores = pd.DataFrame(pcs.transform(cereals_df[["calories", "rating"]]),
+columns=["PC1","PC2"])
+scores.head()
+
+plt.plot(scores.PC1[:],scores.PC2[:],'o')
+plt.xlabel('scores.PC1') 
+plt.ylabel('scores.PC2') 
+plt.title('Y1 vs Y2') 
+plt.show() 
+
+
+
+
+
+cereals_df = pd.read_csv("/content/Cereals.csv")
+#cereals_df.head()
+#cereals_df.shape
+#cereals_df.dtypes
+####### PCA with scale
+pcs = PCA()
+#pcs.fit(cereals_df.iloc[:, 3:].dropna(axis=0))
+pcs.fit(preprocessing.scale(cereals_df.iloc[:, 3:].dropna(axis=0)))
+pcsSummary_df = pd.DataFrame({"Standard deviation": np.sqrt(pcs.explained_variance_),"Proportion of variance": pcs.explained_variance_ratio_,"Cumulative proportion": np.cumsum(pcs.explained_variance_ratio_)})
+pcsSummary_df = pcsSummary_df.transpose()
+pcsSummary_df.columns = [f"P{i}" for i in range(1, len(pcsSummary_df.columns) + 1)]
+pcsSummary_df.round(4)
+#### Components 
+pcsComponents_df = pd.DataFrame(pcs.components_.transpose(), columns=pcsSummary_df.columns,index=cereals_df.iloc[:, 3:].columns)
+pcsComponents_df.iloc[:,:8]
+# Scores
+cereals_df_1 = pd.DataFrame(cereals_df.iloc[:,3:].dropna(axis=0)) #,columns=["PC1","PC2","PC3"])
+scores = pd.DataFrame(pcs.transform(cereals_df_1))
+scores.head()
+
+from mpl_toolkits import mplot3d
+ax = plt.axes(projection='3d')
+zline = scores.iloc[:,2]
+xline = scores.iloc[:,1]
+yline = scores.iloc[:,0]
+ax.scatter3D(xline, yline, zline, cmap='Greens')
+
+
+
+####### Sparse PCA
+from numpy import reshape
+import seaborn as sns
+spca = SparsePCA( random_state=0,alpha=1e-3, ridge_alpha=1e-6) # Solve sparse pca
+spca.fit(cereals_df.iloc[:, 3:].dropna(axis=0))
+pcsComponents_df = pd.DataFrame(spca.components_.transpose(), columns=pcsSummary_df.columns,index=cereals_df.iloc[:, 3:].columns)
+pcsComponents_df.iloc[:,:5]
+
+
+
+Q,R =np.linalg.qr(spca.components_)
+R2=np.diag(R)*np.diag(R)
+arr1 = np.argsort(R2)[::-1]
+R2_=R2[arr1]
+pcsComponents_df_=spca.components_.copy()
+
+# calculo de r_yi_Xk
+# pd.DataFrame(np.matmul(spca.components_.transpose(),np.diag(np.diag(np.cov(pd.DataFrame(spca.components_.transpose()))))))
+pd.DataFrame(np.matmul(pcsComponents_df_,np.diag(np.diag(np.cov(pd.DataFrame(pcsComponents_df_))))))
+
+
+pcsSummary_df_ = pd.DataFrame({"Standard deviation": np.sqrt(R2_),"Proportion of variance": np.divide(R2_,np.sum(R2_)),"Cumulative proportion": np.cumsum(np.divide(R2_,np.sum(R2_)))})
+pcsSummary_df_ = pcsSummary_df_.transpose()
+pcsSummary_df_.columns = ["PC".format(i) for i in range(1, len(pcsSummary_df_.columns) + 1)]
+pcsSummary_df_.round(4)
+####
+pcsComponents_df__ = pd.DataFrame(spca.components_.transpose(), columns=pcsSummary_df_.columns,index=cereals_df.iloc[:, 3:].columns)
+pcsComponents_df__.iloc[:,:6]

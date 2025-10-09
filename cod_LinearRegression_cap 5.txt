@@ -1,0 +1,116 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression, Lasso, Ridge, LassoCV, BayesianRidge
+import statsmodels.formula.api as sm
+import matplotlib.pylab as plt
+from dmba import regressionSummary, exhaustive_search
+from dmba import backward_elimination, forward_selection, stepwise_selection
+from dmba import adjusted_r2_score, AIC_score, BIC_score
+
+
+############### code for fitting a regression model to training set and predicting
+############### code for fitting a regression model
+# reduce data frame to the top 1000 rows and select columns for regression analysis
+car_df = pd.read_csv("D:\__UNI_2022_HP\_CC 442_Mineria de Datos\_Semana 6_\ToyotaCorolla.csv")
+car_df = car_df.iloc[0:1000]
+predictors = ["Age_08_04", "KM", "Fuel_Type", "HP", "Met_Color", "Automatic","CC","Doors", "Quarterly_Tax", "Weight"]
+outcome = "Price"
+#car_df.dtypes
+# partition data
+X = pd.get_dummies(car_df[predictors], drop_first=True)
+y = car_df[outcome]
+train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=0.4,random_state=1)
+car_lm = LinearRegression()
+car_lm.fit(train_X, train_y)
+# print coefficients
+print(pd.DataFrame({"Predictor": X.columns, "coefficient": car_lm.coef_}))
+# print performance measures (training data)
+regressionSummary(train_y, car_lm.predict(train_X))
+
+############### prices in validation set
+# Use predict() to make predictions on a new set
+car_lm_pred = car_lm.predict(valid_X)
+result = pd.DataFrame({"Predicted": car_lm_pred, "Actual": valid_y,"Residual": valid_y - car_lm_pred})
+print(result.head(20))
+# print performance measures (validation data)
+regressionSummary(valid_y, car_lm_pred)
+
+
+########## code for plotting histogram of validation errors
+car_lm_pred = car_lm.predict(valid_X)
+all_residuals = valid_y - car_lm_pred
+# Determine the percentage of datapoints with a residual in [-1406, 1406] = approx.
+# 75%
+print(len(all_residuals[(all_residuals > -1406) & (all_residuals < 1406)]) / len(all_residuals))
+pd.DataFrame({"Residuals": all_residuals}).hist(bins=25)
+plt.show()
+
+############ Exhaustive search for reducing predictors in Toyota Corolla example
+def train_model(variables):
+    model = LinearRegression()
+    model.fit(train_X[list(variables)], train_y)
+    return model
+def score_model(model, variables):
+    pred_y = model.predict(train_X[list(variables)])
+    # we negate as score is optimized to be as low as possible
+    return -adjusted_r2_score(train_y, pred_y, model)
+allVariables = train_X.columns
+results = exhaustive_search(allVariables, train_model, score_model)
+data = []
+for result in results:
+    model = result["model"]
+    variables = list(result["variables"])
+    AIC = AIC_score(train_y, model.predict(train_X[variables]), model)
+    d = {"n": result["n"], "r2adj": -result["score"], "AIC": AIC}
+    d.update({var: var in result['variables'] for var in allVariables})
+    data.append(d)
+pd.DataFrame(data, columns=('n', 'r2adj', 'AIC') + tuple(sorted(allVariables)))
+
+
+# Usar el modelo seleccionado (Exhaustive search) para realizar 
+# 1.- análisis predictivo 
+# 2.- Gráfico residuales 
+#
+
+
+
+
+######### code for regularized linear regression
+lasso = Lasso(normalize=True, alpha=1)
+lasso.fit(train_X, train_y)
+regressionSummary(valid_y, lasso.predict(valid_X))
+
+# Usar el modelo seleccionado (lasso) para realizar 
+# 1.- análisis predictivo 
+# 2.- Gráfico residuales 
+#
+
+
+
+lasso_cv = LassoCV(normalize=True, cv=5)
+lasso_cv.fit(train_X, train_y)
+regressionSummary(valid_y, lasso_cv.predict(valid_X))
+print("Lasso-CV chosen regularization: ", lasso_cv.alpha_)
+print(lasso_cv.coef_)
+
+# Usar el modelo seleccionado (lassoCV) para realizar 
+# 1.- análisis predictivo 
+# 2.- Gráfico residuales 
+#
+
+
+
+
+
+
+
+ridge = Ridge(normalize=True, alpha=1)
+ridge.fit(train_X, train_y)
+regressionSummary(valid_y, ridge.predict(valid_X))
+
+bayesianRidge = BayesianRidge(normalize=True)
+bayesianRidge.fit(train_X, train_y)
+regressionSummary(valid_y, bayesianRidge.predict(valid_X))
+alpha = bayesianRidge.lambda_ / bayesianRidge.alpha_
+print('Bayesian ridge chosen regularization: ', alpha)
+
