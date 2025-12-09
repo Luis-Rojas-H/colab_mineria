@@ -407,3 +407,6 @@ P(Xᵢ|Y) = (count(Xᵢ,Y) + α) / (count(Y) + α × n_features)
 *Este documento proporciona una base teórica sólida para entender y aplicar el análisis de Naive Bayes en problemas de clasificación binaria con clases desbalanceadas.*
 
 
+
+
+
