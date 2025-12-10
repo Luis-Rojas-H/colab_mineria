@@ -18,6 +18,7 @@ utilities_df = utilities_df.apply(lambda x: x.astype("float64"))
 # Normalize distances
 utilities_df_norm = utilities_df.apply(preprocessing.scale,axis=0)
 # utilities_df_norm.dtypes
+
 kmeans = KMeans(n_clusters=6, random_state=0).fit(utilities_df_norm)
 # Cluster membership
 memb = pd.Series(kmeans.labels_, index=utilities_df_norm.index)
