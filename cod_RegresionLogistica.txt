@@ -1,0 +1,47 @@
+!pip install dmba
+!pip install mord
+
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
+from sklearn.model_selection import train_test_split
+import statsmodels.api as sm
+from mord import LogisticIT
+import matplotlib.pylab as plt
+import seaborn as sns
+from dmba import classificationSummary, gainsChart, liftChart
+from dmba.metric import AIC_score
+
+
+bank_df = pd.read_csv('UniversalBank.csv')
+bank_df.drop(columns=['ID', 'ZIP Code'], inplace=True)
+bank_df.columns = [c.replace(' ', '_') for c in bank_df.columns]
+# Treat education as categorical, convert to dummy variables
+bank_df['Education'] = bank_df['Education'].astype('category')
+new_categories = {1: 'Undergrad', 2: 'Graduate', 3: 'Advanced/Professional'}
+bank_df.Education.cat.rename_categories(new_categories, inplace=True)
+bank_df = pd.get_dummies(bank_df, prefix_sep='_', drop_first=True)
+y = bank_df['Personal_Loan']
+X = bank_df.drop(columns=['Personal_Loan'])
+# partition data
+train_X, valid_X, train_y, valid_y = train_test_split(X, y, test_size=0.4,
+random_state=1)
+# fit a logistic regression (set penalty=l2 and C=1e42 to avoid regularization)
+logit_reg = LogisticRegression(penalty="l2", C=1e42, solver='liblinear')
+logit_reg.fit(train_X, train_y)
+print('intercept ', logit_reg.intercept_[0])
+print(pd.DataFrame({'coeff': logit_reg.coef_[0]}, index=X.columns).transpose())
+print('AIC', AIC_score(valid_y, logit_reg.predict(valid_X), df = len(train_X.columns)
++ 1))
+
+
+
+logit_reg_pred = logit_reg.predict(valid_X)
+logit_reg_proba = logit_reg.predict_proba(valid_X)
+logit_result = pd.DataFrame({'actual': valid_y,
+'p(0)': [p[0] for p in logit_reg_proba],
+'p(1)': [p[1] for p in logit_reg_proba],
+'predicted': logit_reg_pred })
+# display four different cases
+interestingCases = [2764, 932, 2721, 702]
+print(logit_result.loc[interestingCases])

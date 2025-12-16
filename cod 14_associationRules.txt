@@ -1,0 +1,28 @@
+# pip show numpy
+pip install 'numpy>1.21.6,<2'
+pip install surprise
+import surprise
+import heapq
+from collections import defaultdict
+import pandas as pd
+import matplotlib.pylab as plt
+from mlxtend.frequent_patterns import apriori
+from mlxtend.frequent_patterns import association_rules
+from surprise import Dataset, Reader, KNNBasic
+from surprise.model_selection import train_test_split
+
+# Load and preprocess data set
+fp_df = pd.read_csv('/content/Faceplate.csv')
+# fp_df.dtypes
+# fp_df.shape
+# fp_df.head()
+fp_df.set_index('Transaction', inplace=True)
+print(fp_df)
+# create frequent itemsets
+itemsets = apriori(fp_df, min_support=0.2, use_colnames=True)
+# convert into rules
+rules = association_rules(itemsets, metric='confidence', min_threshold=0.5)
+rules.sort_values(by=['lift'], ascending=False).head(6)
+print(rules.sort_values(by=['lift'], ascending=False)
+.drop(columns=['antecedent support', 'consequent support', 'conviction'])
+.head(6))
